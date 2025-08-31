@@ -184,6 +184,50 @@ device.
       unlaunched_dut.launch()
       unlaunched_dut.readlines_until('Hello world')
 
+
+harness_devices
+===============
+This fixture is designed for multi-device testing in connectivity test, such as BLE, WiFi,
+CAN, SPI, I2C, etc.
+This fixture will load harness devices info from harness_devices_yaml fixture,
+then flash and initialize the devices as dut fixture, Give access to a list of `DeviceAdapter`_ type objects.
+To use this fixture, harness_build_dirs fixture must to be defined in test suite.
+which should return the buid_dirs for each harness devices.
+
+.. code-block:: yaml
+
+   harness_devices_yaml:
+      - name: dut1
+        type: hardware
+        port: /dev/ttyACM0
+
+.. code-block:: python
+
+   import pytest
+   from typing import List
+   from twister_harness import DeviceAdapter, harness_devices
+
+   def harness_build_dirs(request: pytest.FixtureRequest) -> List[str]:
+    build_dir = request.config.getoption('--build-dir')
+    return [build_dir]
+
+   def test_sample(harness_devices: list[DeviceAdapter]):
+      for harness_device in harness_devices:
+         harness_device.readlines_until(regex=r'Bluetooth initialized', timeout=3)
+
+harness_shells
+==============
+This fixture is designed with harness_devices, just like shell fixture with dut.
+give access to a list of `Shell`_ type objects for each harness device.
+
+.. code-block:: python
+
+   from twister_harness import Shell
+
+   def test_sample(harness_shells: list[Shell]):
+      for shell in harness_shells:
+        shell.exec_command('bt advertise on')
+
 Classes
 *******
 
