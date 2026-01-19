@@ -13,8 +13,12 @@ tests:
       - qemu_cortex_m3
   sample.bluetooth.central_ht.nxp:
     # Disabling monolithic since CI environment doesn't use blobs
-    build_only: true
-    harness: bluetooth
+    harness: pytest
+    harness_config:
+      pytest_dut_scope: session
+      fixture: multi_instance_harness
+    required_applications:
+      - name: sample.bluetooth.peripheral_ht.nxp
     platform_allow:
       - rd_rw612_bga
       - frdm_rw612

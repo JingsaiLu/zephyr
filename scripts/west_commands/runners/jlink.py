@@ -405,9 +405,12 @@ class JLinkBinaryRunner(ZephyrBinaryRunner):
             if command == 'debug':
                 client_cmd += ['-ex', 'monitor halt',
                                '-ex', 'monitor reset',
-                               '-ex', 'load']
+                            #    '-ex', 'load'
+                               ]
                 if self.reset:
-                    client_cmd += ['-ex', 'monitor reset']
+                    client_cmd += ['-ex', 'set confirm off']
+                    client_cmd += ['-ex', 'monitor go']
+                    client_cmd += ['-ex', 'q']
             if not self.gdb_host:
                 self.require(self.gdbserver)
                 self.print_gdbserver_message()

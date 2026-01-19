@@ -113,6 +113,13 @@ class HardwareAdapter(DeviceAdapter):
         return base_args, extra_args
 
     def _flash_and_run(self) -> None:
+
+        command = [
+            self.west,
+            'debug',
+            '--skip-rebuild',
+            '--dev-id', str(self.device_config.build_dir),
+        ]
         """Flash application on a device."""
         if not self.command:
             msg = 'Flash command is empty, please verify if it was generated properly.'
@@ -150,6 +157,68 @@ class HardwareAdapter(DeviceAdapter):
                 logger.debug('Flashing finished')
             else:
                 msg = f'Could not flash device {self.device_config.id}'
+                logger.error(msg)
+                raise TwisterHarnessException(msg)
+
+    def reset(self) -> None:
+
+
+        command = [
+            self.west,
+            'debug',
+        ]
+
+        command_extra_args = []
+        if self.device_config.west_flash_extra_args:
+            command_extra_args.extend(self.device_config.west_flash_extra_args)
+
+        if self.device_config.runner:
+            runner_base_args, runner_extra_args = self._prepare_runner_args()
+            command.extend(runner_base_args)
+            command_extra_args.extend(runner_extra_args)
+
+        if command_extra_args:
+            command.append('--')
+            command.extend(command_extra_args)
+        self.command = command
+
+        """Flash application on a device."""
+        if not self.command:
+            msg = 'resetting command is empty, please verify if it was generated properly.'
+            logger.error(msg)
+            raise TwisterHarnessException(msg)
+
+        if self.device_config.pre_script:
+            self._run_custom_script(self.device_config.pre_script, self.base_timeout)
+
+        if self.device_config.id:
+            logger.debug('Flashing device %s', self.device_config.id)
+        log_command(logger, 'Flashing command', self.command, level=logging.DEBUG)
+
+        process = stdout = None
+        try:
+            process = subprocess.Popen(self.command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.env)
+            stdout, _ = process.communicate(timeout=self._flashing_timeout)
+        except subprocess.TimeoutExpired as exc:
+            process.kill()
+            msg = f'Timeout occurred ({self._flashing_timeout}s) during resetting.'
+            logger.error(msg)
+            raise TwisterHarnessTimeoutException(msg) from exc
+        except subprocess.SubprocessError as exc:
+            msg = f'resetting subprocess failed due to SubprocessError {exc}'
+            logger.error(msg)
+            raise TwisterHarnessTimeoutException(msg) from exc
+        finally:
+            if stdout is not None:
+                stdout_decoded = stdout.decode(errors='ignore')
+                with open(self.device_log_path, 'a+') as log_file:
+                    log_file.write(stdout_decoded)
+            if self.device_config.post_flash_script:
+                self._run_custom_script(self.device_config.post_flash_script, self.base_timeout)
+            if process is not None and process.returncode == 0:
+                logger.debug('resetting finished')
+            else:
+                msg = f'Could not resetting device {self.device_config.id}'
                 logger.error(msg)
                 raise TwisterHarnessException(msg)
 
