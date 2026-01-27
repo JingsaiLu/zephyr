@@ -33,6 +33,7 @@ from typing import NamedTuple, NoReturn
 
 try:
     from elftools.elf.elffile import ELFFile
+
     ELFTOOLS_MISSING = False
 except ImportError:
     ELFTOOLS_MISSING = True
@@ -46,6 +47,7 @@ _DRY_RUN = False
 
 _logger = logging.getLogger('runners')
 
+
 # FIXME: I assume this code belongs somewhere else, but i couldn't figure out
 # a good location for it, so i put it here for now
 # We could potentially search for RTT blocks in hex or bin files as well,
@@ -53,9 +55,11 @@ _logger = logging.getLogger('runners')
 # to avoid, at the risk of false positives.
 def find_rtt_block(elf_file: str) -> int | None:
     if ELFTOOLS_MISSING:
-        raise RuntimeError('the Python dependency elftools was missing; '
-                           'see the getting started guide for details on '
-                           'how to fix')
+        raise RuntimeError(
+            'the Python dependency elftools was missing; '
+            'see the getting started guide for details on '
+            'how to fix'
+        )
 
     with open(elf_file, 'rb') as f:
         elffile = ELFFile(f)
@@ -69,7 +73,6 @@ def find_rtt_block(elf_file: str) -> int | None:
 
 
 class _DebugDummyPopen:
-
     def terminate(self):
         pass
 
@@ -134,8 +137,7 @@ class NetworkPortHelper:
     @staticmethod
     def _parser_windows(cmd):
         out = subprocess.check_output(cmd).split(b'\r\n')
-        used_bytes = [x.split()[1].rsplit(b':', 1)[1] for x in out
-                      if x.startswith(b'  TCP')]
+        used_bytes = [x.split()[1].rsplit(b':', 1)[1] for x in out if x.startswith(b'  TCP')]
         return {int(b) for b in used_bytes}
 
     @staticmethod
@@ -147,8 +149,7 @@ class NetworkPortHelper:
     @staticmethod
     def _parser_darwin(cmd):
         out = subprocess.check_output(cmd).split(b'\n')
-        used_bytes = [x.split()[3].rsplit(b':', 1)[1] for x in out
-                      if x.startswith(b'tcp')]
+        used_bytes = [x.split()[3].rsplit(b':', 1)[1] for x in out if x.startswith(b'tcp')]
         return {int(b) for b in used_bytes}
 
 
@@ -220,6 +221,7 @@ class BuildConfiguration:
                     # '# CONFIG_FOO is not set' means a boolean option is false.
                     self.options[match.group('option')] = False
 
+
 class SysbuildConfiguration(BuildConfiguration):
     '''This helper class provides access to sysbuild-time configuration.
 
@@ -236,6 +238,7 @@ class SysbuildConfiguration(BuildConfiguration):
             return
         super()._parse()
 
+
 class MissingProgram(FileNotFoundError):
     '''FileNotFoundError subclass for missing program dependencies.
 
@@ -249,7 +252,17 @@ class MissingProgram(FileNotFoundError):
         super().__init__(errno.ENOENT, os.strerror(errno.ENOENT), program)
 
 
-_RUNNERCAPS_COMMANDS = {'flash', 'debug', 'debugserver', 'attach', 'simulate', 'robot', 'rtt'}
+_RUNNERCAPS_COMMANDS = {
+    'flash',
+    'debug',
+    'debugserver',
+    'attach',
+    'simulate',
+    'robot',
+    'rtt',
+    'reset',
+}
+
 
 @dataclass
 class RunnerCaps:
@@ -321,14 +334,14 @@ class RunnerCaps:
     file: bool = False
     hide_load_files: bool = False
     rtt: bool = False  # This capability exists separately from the rtt command
-                       # to allow other commands to use the rtt address
+    # to allow other commands to use the rtt address
     dry_run: bool = False
     skip_load: bool = False
-    batch_debug: bool = False # In batch mode, GDB exits with status 0 after loading;
-                              # for automated debugging, add --batch with 'monitor go',
-                              # 'disconnect', and 'quit' commands (named batch_debug in west),
-                              # unlike interactive debug mode (default),
-                              # which stops and waits for user input
+    batch_debug: bool = False  # In batch mode, GDB exits with status 0 after loading;
+    # for automated debugging, add --batch with 'monitor go',
+    # 'disconnect', and 'quit' commands (named batch_debug in west),
+    # unlike interactive debug mode (default),
+    # which stops and waits for user input
 
     def __post_init__(self):
         if self.mult_dev_ids and not self.dev_id:
@@ -360,27 +373,27 @@ class RunnerConfig(NamedTuple):
     can register specific configuration options using their
     do_add_parser() hooks.
     '''
-    build_dir: str                  # application build directory
-    board_dir: str                  # board definition directory
-    elf_file: str | None         # zephyr.elf path, or None
-    exe_file: str | None         # zephyr.exe path, or None
-    hex_file: str | None         # zephyr.hex path, or None
-    bin_file: str | None         # zephyr.bin path, or None
-    uf2_file: str | None         # zephyr.uf2 path, or None
-    mot_file: str | None         # zephyr.mot path
-    file: str | None             # binary file path (provided by the user), or None
+
+    build_dir: str  # application build directory
+    board_dir: str  # board definition directory
+    elf_file: str | None  # zephyr.elf path, or None
+    exe_file: str | None  # zephyr.exe path, or None
+    hex_file: str | None  # zephyr.hex path, or None
+    bin_file: str | None  # zephyr.bin path, or None
+    uf2_file: str | None  # zephyr.uf2 path, or None
+    mot_file: str | None  # zephyr.mot path
+    file: str | None  # binary file path (provided by the user), or None
     file_type: FileType | None = FileType.OTHER  # binary file type
-    gdb: str | None = None       # path to a usable gdb
-    openocd: str | None = None   # path to a usable openocd
+    gdb: str | None = None  # path to a usable gdb
+    openocd: str | None = None  # path to a usable openocd
     openocd_search: list[str] = []  # add these paths to the openocd search path
-    rtt_address: int | None = None # address of the rtt control block
+    rtt_address: int | None = None  # address of the rtt control block
 
 
 _YN_CHOICES = ['Y', 'y', 'N', 'n', 'yes', 'no', 'YES', 'NO']
 
 
 class _DTFlashAction(argparse.Action):
-
     def __call__(self, parser, namespace, values, option_string=None):
         if values.lower().startswith('y'):
             namespace.dt_flash = True
@@ -389,18 +402,21 @@ class _DTFlashAction(argparse.Action):
 
 
 class DeprecatedAction(argparse.Action):
-
     def __call__(self, parser, namespace, values, option_string=None):
-        _logger.warning(f'Argument {self.option_strings[0]} is deprecated' +
-                        (f' for your runner {self._cls.name()}'  if self._cls is not None else '') +
-                        f', use {self._replacement} instead.')
+        _logger.warning(
+            f'Argument {self.option_strings[0]} is deprecated'
+            + (f' for your runner {self._cls.name()}' if self._cls is not None else '')
+            + f', use {self._replacement} instead.'
+        )
         setattr(namespace, self.dest, values)
+
 
 def depr_action(*args, cls=None, replacement=None, **kwargs):
     action = DeprecatedAction(*args, **kwargs)
     action._cls = cls
     action._replacement = replacement
     return action
+
 
 class ZephyrBinaryRunner(abc.ABC):
     '''Abstract superclass for binary runners (flashers, debuggers).
@@ -504,6 +520,7 @@ class ZephyrBinaryRunner(abc.ABC):
     @staticmethod
     def get_runners() -> list[type['ZephyrBinaryRunner']]:
         '''Get a list of all currently defined runner classes.'''
+
         def inheritors(klass):
             subclasses = set()
             work = [klass]
@@ -561,29 +578,28 @@ class ZephyrBinaryRunner(abc.ABC):
 
         if caps.dev_id:
             action = 'append' if caps.mult_dev_ids else 'store'
-            parser.add_argument('-i', '--dev-id',
-                                action=action,
-                                dest='dev_id',
-                                help=cls.dev_id_help())
+            parser.add_argument(
+                '-i', '--dev-id', action=action, dest='dev_id', help=cls.dev_id_help()
+            )
         else:
             parser.add_argument('-i', '--dev-id', help=argparse.SUPPRESS)
 
         if caps.flash_addr:
-            parser.add_argument('--dt-flash', default=False, choices=_YN_CHOICES,
-                                action=_DTFlashAction,
-                                help='''If 'yes', try to use flash address
+            parser.add_argument(
+                '--dt-flash',
+                default=False,
+                choices=_YN_CHOICES,
+                action=_DTFlashAction,
+                help='''If 'yes', try to use flash address
                                 information from devicetree when flash
-                                addresses are unknown (e.g. when flashing a .bin)''')
+                                addresses are unknown (e.g. when flashing a .bin)''',
+            )
         else:
             parser.add_argument('--dt-flash', help=argparse.SUPPRESS)
 
         if caps.file:
-            parser.add_argument('-f', '--file',
-                                dest='file',
-                                help="path to binary file")
-            parser.add_argument('-t', '--file-type',
-                                dest='file_type',
-                                help="type of binary file")
+            parser.add_argument('-f', '--file', dest='file', help="path to binary file")
+            parser.add_argument('-t', '--file-type', dest='file_type', help="type of binary file")
         else:
             parser.add_argument('-f', '--file', help=argparse.SUPPRESS)
             parser.add_argument('-t', '--file-type', help=argparse.SUPPRESS)
@@ -594,71 +610,123 @@ class ZephyrBinaryRunner(abc.ABC):
             parser.add_argument('--bin-file', help=argparse.SUPPRESS)
             parser.add_argument('--mot-file', help=argparse.SUPPRESS)
         else:
-            parser.add_argument('--elf-file',
-                                metavar='FILE',
-                                action=(partial(depr_action, cls=cls,
-                                                replacement='-f/--file') if caps.file else None),
-                                help='path to zephyr.elf'
-                                if not caps.file else 'Deprecated, use -f/--file instead.')
-            parser.add_argument('--hex-file',
-                                metavar='FILE',
-                                action=(partial(depr_action, cls=cls,
-                                                replacement='-f/--file') if caps.file else None),
-                                help='path to zephyr.hex'
-                                if not caps.file else 'Deprecated, use -f/--file instead.')
-            parser.add_argument('--bin-file',
-                                metavar='FILE',
-                                action=(partial(depr_action, cls=cls,
-                                                replacement='-f/--file') if caps.file else None),
-                                help='path to zephyr.bin'
-                                if not caps.file else 'Deprecated, use -f/--file instead.')
-            parser.add_argument('--mot-file',
-                                metavar='FILE',
-                                action=(partial(depr_action, cls=cls,
-                                                replacement='-f/--file') if caps.file else None),
-                                help='path to zephyr.mot'
-                                if not caps.file else 'Deprecated, use -f/--file instead.')
+            parser.add_argument(
+                '--elf-file',
+                metavar='FILE',
+                action=(
+                    partial(depr_action, cls=cls, replacement='-f/--file') if caps.file else None
+                ),
+                help='path to zephyr.elf'
+                if not caps.file
+                else 'Deprecated, use -f/--file instead.',
+            )
+            parser.add_argument(
+                '--hex-file',
+                metavar='FILE',
+                action=(
+                    partial(depr_action, cls=cls, replacement='-f/--file') if caps.file else None
+                ),
+                help='path to zephyr.hex'
+                if not caps.file
+                else 'Deprecated, use -f/--file instead.',
+            )
+            parser.add_argument(
+                '--bin-file',
+                metavar='FILE',
+                action=(
+                    partial(depr_action, cls=cls, replacement='-f/--file') if caps.file else None
+                ),
+                help='path to zephyr.bin'
+                if not caps.file
+                else 'Deprecated, use -f/--file instead.',
+            )
+            parser.add_argument(
+                '--mot-file',
+                metavar='FILE',
+                action=(
+                    partial(depr_action, cls=cls, replacement='-f/--file') if caps.file else None
+                ),
+                help='path to zephyr.mot'
+                if not caps.file
+                else 'Deprecated, use -f/--file instead.',
+            )
 
-        parser.add_argument('--erase', action=argparse.BooleanOptionalAction,
-                            help=("mass erase flash before loading, or don't. "
-                                  "Default action depends on each specific runner."
-                                  if caps.erase else argparse.SUPPRESS))
+        parser.add_argument(
+            '--erase',
+            action=argparse.BooleanOptionalAction,
+            help=(
+                "mass erase flash before loading, or don't. "
+                "Default action depends on each specific runner."
+                if caps.erase
+                else argparse.SUPPRESS
+            ),
+        )
 
-        parser.add_argument('--reset', action=argparse.BooleanOptionalAction,
-                            help=("reset device after flashing, or don't. "
-                                  "Default action depends on each specific runner."
-                                  if caps.reset else argparse.SUPPRESS))
+        parser.add_argument(
+            '--reset',
+            action=argparse.BooleanOptionalAction,
+            help=(
+                "reset device after flashing, or don't. "
+                "Default action depends on each specific runner."
+                if caps.reset
+                else argparse.SUPPRESS
+            ),
+        )
 
-        parser.add_argument('--extload', dest='extload',
-                            help=(cls.extload_help() if caps.extload
-                                  else argparse.SUPPRESS))
+        parser.add_argument(
+            '--extload',
+            dest='extload',
+            help=(cls.extload_help() if caps.extload else argparse.SUPPRESS),
+        )
 
-        parser.add_argument('-O', '--tool-opt', dest='tool_opt',
-                            default=[], action='append',
-                            help=(cls.tool_opt_help() if caps.tool_opt
-                                  else argparse.SUPPRESS))
+        parser.add_argument(
+            '-O',
+            '--tool-opt',
+            dest='tool_opt',
+            default=[],
+            action='append',
+            help=(cls.tool_opt_help() if caps.tool_opt else argparse.SUPPRESS),
+        )
 
         if caps.rtt:
-            parser.add_argument('--rtt-address', dest='rtt_address',
-                                type=lambda x: int(x, 0),
-                                help="""address of RTT control block. If not supplied,
-                                it will be autodetected if possible""")
+            parser.add_argument(
+                '--rtt-address',
+                dest='rtt_address',
+                type=lambda x: int(x, 0),
+                help="""address of RTT control block. If not supplied,
+                                it will be autodetected if possible""",
+            )
         else:
             parser.add_argument('--rtt-address', help=argparse.SUPPRESS)
 
-        parser.add_argument('--dry-run', action='store_true',
-                            help=('''Print all the commands without actually
-                            executing them''' if caps.dry_run else argparse.SUPPRESS))
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help=(
+                '''Print all the commands without actually
+                            executing them'''
+                if caps.dry_run
+                else argparse.SUPPRESS
+            ),
+        )
 
         # by default, 'west debug' is expected to flash before starting the session
-        parser.add_argument('--load', action=argparse.BooleanOptionalAction,
-                            help=("load image on target before 'west debug' session"
-                                  if caps.skip_load else argparse.SUPPRESS),
-                            default=True)
+        parser.add_argument(
+            '--load',
+            action=argparse.BooleanOptionalAction,
+            help=(
+                "load image on target before 'west debug' session"
+                if caps.skip_load
+                else argparse.SUPPRESS
+            ),
+            default=True,
+        )
 
-        parser.add_argument('--batch', action=argparse.BooleanOptionalAction,
-                            help="enable west debug batch mode"
-                            if caps.batch_debug else argparse.SUPPRESS)
+        parser.add_argument(
+            '--batch',
+            action=argparse.BooleanOptionalAction,
+            help="enable west debug batch mode" if caps.batch_debug else argparse.SUPPRESS,
+        )
 
         # Runner-specific options.
         cls.do_add_parser(parser)
@@ -669,8 +737,7 @@ class ZephyrBinaryRunner(abc.ABC):
         '''Hook for adding runner-specific options.'''
 
     @classmethod  # noqa: B027
-    def args_from_previous_runner(cls, previous_runner,
-                                  args: argparse.Namespace):
+    def args_from_previous_runner(cls, previous_runner, args: argparse.Namespace):
         '''Update arguments from a previously created runner.
 
         This is intended for propagating relevant user responses
@@ -678,8 +745,7 @@ class ZephyrBinaryRunner(abc.ABC):
         JTAG serial number.'''
 
     @classmethod
-    def create(cls, cfg: RunnerConfig,
-               args: argparse.Namespace) -> 'ZephyrBinaryRunner':
+    def create(cls, cfg: RunnerConfig, args: argparse.Namespace) -> 'ZephyrBinaryRunner':
         '''Create an instance from command-line arguments.
 
         - ``cfg``: runner configuration (pass to superclass __init__)
@@ -718,14 +784,13 @@ class ZephyrBinaryRunner(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def do_create(cls, cfg: RunnerConfig,
-                  args: argparse.Namespace) -> 'ZephyrBinaryRunner':
+    def do_create(cls, cfg: RunnerConfig, args: argparse.Namespace) -> 'ZephyrBinaryRunner':
         '''Hook for instance creation from command line arguments.'''
 
     @staticmethod
-    def get_flash_address(args: argparse.Namespace,
-                          build_conf: BuildConfiguration,
-                          default: int = 0x0) -> int:
+    def get_flash_address(
+        args: argparse.Namespace, build_conf: BuildConfiguration, default: int = 0x0
+    ) -> int:
         '''Helper method for extracting a flash address.
 
         If args.dt_flash is true, returns the address obtained from
@@ -745,15 +810,13 @@ class ZephyrBinaryRunner(abc.ABC):
         CONFIG_FLASH_BASE_ADDRESS + CONFIG_FLASH_LOAD_OFFSET.
         '''
         if build_conf.getboolean('CONFIG_HAS_FLASH_LOAD_OFFSET'):
-            return (build_conf['CONFIG_FLASH_BASE_ADDRESS'] +
-                    build_conf['CONFIG_FLASH_LOAD_OFFSET'])
+            return build_conf['CONFIG_FLASH_BASE_ADDRESS'] + build_conf['CONFIG_FLASH_LOAD_OFFSET']
         else:
             return build_conf['CONFIG_FLASH_BASE_ADDRESS']
 
     @staticmethod
     def sram_address_from_build_conf(build_conf: BuildConfiguration):
-        '''return CONFIG_SRAM_BASE_ADDRESS.
-        '''
+        '''return CONFIG_SRAM_BASE_ADDRESS.'''
         return build_conf['CONFIG_SRAM_BASE_ADDRESS']
 
     def run(self, command: str, **kwargs):
@@ -794,18 +857,21 @@ class ZephyrBinaryRunner(abc.ABC):
 
     @classmethod
     def dev_id_help(cls) -> str:
-        ''' Get the ArgParse help text for the --dev-id option.'''
+        '''Get the ArgParse help text for the --dev-id option.'''
         help = '''Device identifier. Use it to select
                   which debugger, device, node or instance to
                   target when multiple ones are available or
                   connected.'''
-        addendum = '''\nThis option can be present multiple times.''' if \
-                   cls.capabilities().mult_dev_ids else ''
+        addendum = (
+            '''\nThis option can be present multiple times.'''
+            if cls.capabilities().mult_dev_ids
+            else ''
+        )
         return help + addendum
 
     @classmethod
     def extload_help(cls) -> str:
-        ''' Get the ArgParse help text for the --extload option.'''
+        '''Get the ArgParse help text for the --extload option.'''
         return '''External loader to be used by stm32cubeprogrammer
                   to program the targeted external memory.
                   The runner requires the external loader (*.stldr) filename.
@@ -814,7 +880,7 @@ class ZephyrBinaryRunner(abc.ABC):
 
     @classmethod
     def tool_opt_help(cls) -> str:
-        ''' Get the ArgParse help text for the --tool-opt option.'''
+        '''Get the ArgParse help text for the --tool-opt option.'''
         return '''Option to pass on to the underlying tool used
                   by this runner. This can be given multiple times;
                   the resulting arguments will be given to the tool
@@ -938,7 +1004,7 @@ class ZephyrBinaryRunner(abc.ABC):
             cflags |= subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore
         elif system in {'Linux', 'Darwin'}:
             # We can't type check this on Windows for the same reason.
-            preexec = os.setsid # type: ignore
+            preexec = os.setsid  # type: ignore
 
         self._log_cmd(cmd)
         if self.dry_run:
